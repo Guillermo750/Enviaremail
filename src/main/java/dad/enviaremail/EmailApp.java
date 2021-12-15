@@ -7,6 +7,8 @@ import javafx.stage.Stage;
 
 public class EmailApp extends Application {
 	
+	private static Stage primaryStage;
+	
 	private EmailController emailController;
 	
 	@Override
@@ -20,6 +22,10 @@ public class EmailApp extends Application {
 		primaryStage.getIcons().add(new Image("/images/email-send-icon-32x32.png"));
 		primaryStage.setScene(scene);
 		primaryStage.show();
+	}
+	
+	public static Stage getPrimaryStage() {
+		return primaryStage;
 	}
 
 	public static void main(String[] args) {

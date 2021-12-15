@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.net.URL;
 import java.util.ResourceBundle;
 
+import javafx.concurrent.Task;
 import org.apache.commons.mail.DefaultAuthenticator;
 import org.apache.commons.mail.Email;
 import org.apache.commons.mail.EmailException;
@@ -29,19 +30,19 @@ import javafx.stage.Stage;
 
 public class EmailController {
 	
-	private int puertoS;
-	
 	// model
 	
-	StringProperty nombre = new SimpleStringProperty();
-	StringProperty puerto = new SimpleStringProperty();
-	BooleanProperty conexion = new SimpleBooleanProperty();
-	StringProperty emailfr = new SimpleStringProperty();
-	StringProperty contrasena = new SimpleStringProperty();
-	StringProperty emailrem = new SimpleStringProperty();
-	StringProperty asunto = new SimpleStringProperty();
-	StringProperty mensaje = new SimpleStringProperty();
-	
+	private StringProperty nombre = new SimpleStringProperty();
+	private StringProperty puerto = new SimpleStringProperty();
+	private BooleanProperty conexion = new SimpleBooleanProperty();
+	private StringProperty emailfr = new SimpleStringProperty();
+	private StringProperty contrasena = new SimpleStringProperty();
+	private StringProperty emailrem = new SimpleStringProperty();
+	private StringProperty asunto = new SimpleStringProperty();
+	private StringProperty mensaje = new SimpleStringProperty();
+
+	private Task<Void> tarea;
+
 	// view
 	
 	@FXML
@@ -109,44 +110,55 @@ public class EmailController {
 	@FXML
 	void onCerrarButton(ActionEvent event) {
 
-		Stage stage = (Stage) cerrarButton.getScene().getWindow();
-		stage.close();
+		EmailApp.getPrimaryStage().close();
 	}
 
 	@FXML
 	void onEnviarButton(ActionEvent event) {
 
-		try {
-			puertoS = Integer.parseInt(puerto.get());
-			
-			Email email = new SimpleEmail();
-			email.setHostName(nombre.get());
-			email.setSmtpPort(puertoS);
-			email.setAuthenticator(new DefaultAuthenticator(emailfr.get(), contrasena.get()));
-			email.setSSLOnConnect(conexion.get());
-			email.setFrom(emailfr.get());
-			email.setSubject(asunto.get());
-			email.setMsg(mensaje.get());
-			email.addTo(emailrem.get());
-			email.send();
+		tarea = new Task<Void>() {
+			@Override
+			protected Void call() throws Exception {
+				int puertoS = Integer.parseInt(puerto.get());
+				Email email = new SimpleEmail();
+				email.setHostName(nombre.get());
+				email.setSmtpPort(puertoS);
+				email.setAuthenticator(new DefaultAuthenticator(emailfr.get(), contrasena.get()));
+				email.setSSLOnConnect(conexion.get());
+				email.setFrom(emailfr.get());
+				email.setSubject(asunto.get());
+				email.setMsg(mensaje.get());
+				email.addTo(emailrem.get());
+
+				email.send();
+				return null;
+			}
+		};
+
+		tarea.setOnSucceeded(xmen -> {
+			enviarButton.disableProperty().bind(tarea.runningProperty());
 
 			Alert alert1 = new Alert(AlertType.INFORMATION);
 			alert1.setTitle("Mensaje enviado");
 			alert1.setHeaderText("Mensaje enviado con éxito a: '" + emailrem.get() + "'");
-			alert1.show();
+			alert1.initOwner(view.getScene().getWindow());
+			alert1.showAndWait();
 
 			asuntoText.clear();
 			mensajeText.clear();
 			destinatarioText.clear();
+		});
 
-		} catch (EmailException e) {
-
+		tarea.setOnFailed(xmen ->{
 			Alert alert2 = new Alert(AlertType.ERROR);
 			alert2.setContentText("Invalid message supplied");
 			alert2.setTitle("Error");
 			alert2.setHeaderText("No se pudo enviar el email");
-			alert2.show();
-		}
+			alert2.initOwner(view.getScene().getWindow());
+			alert2.showAndWait();
+		});
+
+		new Thread(tarea).start();
 	}
 
 	@FXML
